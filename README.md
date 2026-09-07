@@ -52,6 +52,8 @@ Usage: jtls-doctor <host>[:port] [options]
 Options:
   --truststore <file>         use <file> as truststore instead of the JVM default
   --truststore-password <pw>  truststore password (default: changeit)
+  --http <[host:]port>        run the JSON API instead of checking one target
+                              (single endpoint: POST /check)
   -h, --help                  show this help
 ```
 
@@ -101,8 +103,49 @@ truststore instead of `cacerts`:
 $ jtls-doctor internal.example.org:8443 --truststore /etc/pki/company-ca.p12
 ```
 
+## HTTP API
+
+Instead of checking a single target, jtls-doctor can serve a minimal JSON API:
+
+```bash
+jtls-doctor --http :8080                      # listen on all interfaces
+jtls-doctor --http 8080                       # listen on localhost only
+jtls-doctor --http 127.0.0.1:8080 --truststore /etc/pki/company-ca.p12
+```
+
+It runs until interrupted and exposes a single endpoint, `POST /check`
+(`GET /check?host=...` also works). Request fields:
+
+| Field           | Type   | Meaning                                            |
+|-----------------|--------|----------------------------------------------------|
+| `host`          | string | required, hostname of the server to check          |
+| `port`          | number | optional, defaults to 443                           |
+| `truststorePem` | string | optional: PEM certificate(s) used as truststore    |
+|                 |        | instead of the server's default truststore          |
+
+The result is always HTTP `200` if a check ran; `result` carries the verdict.
+HTTP `400` is returned for malformed requests (bad JSON, missing/invalid host
+or port, invalid PEM), `405` for other methods, and `404` for other paths.
+
+```bash
+$ curl -s -X POST http://localhost:8080/check -d '{"host":"badssl.com"}'
+{"target":"badssl.com:443","truststore":"default JVM cacerts","result":"PASS",
+ "errors":0,"warnings":0,"checks":[
+   {"name":"connect","status":"OK","detail":"TLSv1.2, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"},
+   {"name":"chain-order","status":"OK","detail":"3 certificate(s) sent, leaf-to-root order valid"},
+   {"name":"intermediates","status":"OK","detail":"all required intermediates sent"},
+   {"name":"trust","status":"OK","detail":"root CA 'CN=ISRG Root X1' trusted via default JVM cacerts"},
+   {"name":"extras","status":"OK","detail":"no extra certificates"}]}
+```
+
+Custom trust certificates (e.g. a private CA) can be supplied per request:
+
+```bash
+curl -s -X POST http://localhost:8080/check \
+     -d '{"host":"internal.example.org","truststorePem":"-----BEGIN CERTIFICATE-----
+MIIB..."}'
+```
+
 ## License
 
 ISC — see [LICENSE](LICENSE).
-
-A minimal HTTP API exposing the same checks via a single `GET` endpoint is planned.

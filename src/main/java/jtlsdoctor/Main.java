@@ -19,11 +19,14 @@ public final class Main {
         } catch (IOException | GeneralSecurityException e) {
             System.err.println("error: " + e.getMessage());
             System.exit(2);
+        } catch (InterruptedException e) {
+            System.exit(0); // server stopped (Ctrl+C)
         }
     }
 
-    private static void run(String[] args) throws IOException, GeneralSecurityException {
+    private static void run(String[] args) throws IOException, GeneralSecurityException, InterruptedException {
         String targetArg = null;
+        String httpBind = null;
         Path truststorePath = null;
         char[] truststorePassword = "changeit".toCharArray();
 
@@ -36,6 +39,8 @@ public final class Main {
                 truststorePath = Paths.get(value(args, ++i, a));
             } else if (a.equals("--truststore-password")) {
                 truststorePassword = value(args, ++i, a).toCharArray();
+            } else if (a.equals("--http")) {
+                httpBind = value(args, ++i, a);
             } else {
                 if (a.startsWith("-")) {
                     throw new UsageException("unknown option: " + a);
@@ -46,6 +51,21 @@ public final class Main {
                 targetArg = a;
             }
         }
+
+        if (targetArg != null && httpBind != null) {
+            throw new UsageException("--http cannot be combined with a target host");
+        }
+
+        TrustStore trustStore = truststorePath == null
+                ? TrustStore.defaultJvm()
+                : TrustStore.load(truststorePath, truststorePassword, truststorePath.toString());
+
+        if (httpBind != null) {
+            String[] bind = parseBind(httpBind);
+            new HttpApi(bind[0], Integer.parseInt(bind[1]), trustStore).start();
+            return;
+        }
+
         if (targetArg == null) {
             throw new UsageException("missing target host");
         }
@@ -53,10 +73,6 @@ public final class Main {
         String[] hp = parseTarget(targetArg);
         String host = hp[0];
         int port = Integer.parseInt(hp[1]);
-
-        TrustStore trustStore = truststorePath == null
-                ? TrustStore.defaultJvm()
-                : TrustStore.load(truststorePath, truststorePassword, truststorePath.toString());
 
         Report report = new TlsDoctor(trustStore).check(host, port);
         print(report);
@@ -68,6 +84,45 @@ public final class Main {
             throw new UsageException("missing value for " + option);
         }
         return args[index];
+    }
+
+    private static String[] parseBind(String s) {
+        String host = "127.0.0.1";
+        String port = s;
+        if (s.startsWith("[")) {
+            int end = s.indexOf(']');
+            if (end < 0) {
+                throw new UsageException("invalid bind address: " + s);
+            }
+            host = s.substring(1, end);
+            if (end + 1 < s.length()) {
+                if (s.charAt(end + 1) != ':') {
+                    throw new UsageException("invalid bind address: " + s);
+                }
+                port = s.substring(end + 2);
+            } else {
+                port = "8080";
+            }
+        } else {
+            int colon = s.lastIndexOf(':');
+            if (colon == 0) {
+                host = "0.0.0.0";
+                port = s.substring(1);
+            } else if (colon > 0) {
+                host = s.substring(0, colon);
+                port = s.substring(colon + 1);
+            }
+        }
+        int p;
+        try {
+            p = Integer.parseInt(port);
+        } catch (NumberFormatException e) {
+            throw new UsageException("invalid port: " + port);
+        }
+        if (p < 1 || p > 65535) {
+            throw new UsageException("invalid port: " + port);
+        }
+        return new String[] { host, String.valueOf(p) };
     }
 
     private static String[] parseTarget(String s) {
@@ -162,6 +217,8 @@ public final class Main {
         out.println("Options:");
         out.println("  --truststore <file>         use <file> as truststore instead of the JVM default");
         out.println("  --truststore-password <pw>  truststore password (default: changeit)");
+        out.println("  --http <[host:]port>        run the JSON API instead of checking one target");
+        out.println("                              (single endpoint: POST /check)");
         out.println("  -h, --help                  show this help");
         out.println();
         out.println("Exit codes: 0 all checks passed, 1 checks failed, 2 usage error");
