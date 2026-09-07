@@ -1,5 +1,7 @@
 package jtlsdoctor;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public final class Report {
@@ -11,7 +13,7 @@ public final class Report {
     public Report(String target, String trustStoreDescription, List<CheckResult> checks) {
         this.target = target;
         this.trustStoreDescription = trustStoreDescription;
-        this.checks = List.copyOf(checks);
+        this.checks = Collections.unmodifiableList(new ArrayList<CheckResult>(checks));
     }
 
     public String target() {

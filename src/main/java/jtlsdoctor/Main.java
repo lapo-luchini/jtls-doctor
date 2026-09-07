@@ -2,8 +2,8 @@ package jtlsdoctor;
 
 import java.io.IOException;
 import java.io.PrintStream;
-import java.io.Serial;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
 
 public final class Main {
@@ -29,22 +29,21 @@ public final class Main {
 
         for (int i = 0; i < args.length; i++) {
             String a = args[i];
-            switch (a) {
-                case "-h", "--help" -> {
-                    printUsage(System.out);
-                    return;
+            if (a.equals("-h") || a.equals("--help")) {
+                printUsage(System.out);
+                return;
+            } else if (a.equals("--truststore")) {
+                truststorePath = Paths.get(value(args, ++i, a));
+            } else if (a.equals("--truststore-password")) {
+                truststorePassword = value(args, ++i, a).toCharArray();
+            } else {
+                if (a.startsWith("-")) {
+                    throw new UsageException("unknown option: " + a);
                 }
-                case "--truststore" -> truststorePath = Path.of(value(args, ++i, a));
-                case "--truststore-password" -> truststorePassword = value(args, ++i, a).toCharArray();
-                default -> {
-                    if (a.startsWith("-")) {
-                        throw new UsageException("unknown option: " + a);
-                    }
-                    if (targetArg != null) {
-                        throw new UsageException("unexpected extra argument: " + a);
-                    }
-                    targetArg = a;
+                if (targetArg != null) {
+                    throw new UsageException("unexpected extra argument: " + a);
                 }
+                targetArg = a;
             }
         }
         if (targetArg == null) {
@@ -104,7 +103,7 @@ public final class Main {
                 host = t;
             }
         }
-        if (host.isBlank()) {
+        if (host.trim().isEmpty()) {
             throw new UsageException("missing host in target: " + s);
         }
         int p;
@@ -125,11 +124,14 @@ public final class Main {
             System.out.printf("  %-14s %-4s %s%n", c.name(), c.status(), c.detail() == null ? "" : c.detail());
         }
         StringBuilder line = new StringBuilder("RESULT: ");
-        line.append(switch (report.overall()) {
-            case FAIL -> "FAIL";
-            case WARN -> "WARN";
-            default -> "PASS";
-        });
+        CheckResult.Status overall = report.overall();
+        if (overall == CheckResult.Status.FAIL) {
+            line.append("FAIL");
+        } else if (overall == CheckResult.Status.WARN) {
+            line.append("WARN");
+        } else {
+            line.append("PASS");
+        }
         long errors = report.count(CheckResult.Status.FAIL);
         long warnings = report.count(CheckResult.Status.WARN);
         if (errors > 0 || warnings > 0) {
@@ -166,7 +168,6 @@ public final class Main {
     }
 
     private static final class UsageException extends RuntimeException {
-        @Serial
         private static final long serialVersionUID = 1L;
 
         UsageException(String message) {

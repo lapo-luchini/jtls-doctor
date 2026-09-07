@@ -18,6 +18,8 @@ import java.security.cert.TrustAnchor;
 import java.security.cert.X509CertSelector;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -52,18 +54,18 @@ public final class TlsDoctor {
         X509Certificate[] sent = hs.chain();
         if (sent == null || sent.length == 0) {
             String why = hs.connected() ? "server sent no certificates" : "no certificate chain received";
-            for (String n : List.of("trust", "chain-order", "intermediates", "extras")) {
+            for (String n : Arrays.asList("trust", "chain-order", "intermediates", "extras")) {
                 checks.add(CheckResult.skip(n, why));
             }
             return new Report(target, trustStore.description(), checks);
         }
 
-        List<X509Certificate> chain = List.of(sent);
+        List<X509Certificate> chain = Arrays.asList(sent);
         X509Certificate leaf = chain.get(0);
 
         String invalidMessage = validityProblem(chain);
         Build r1 = invalidMessage == null
-                ? build(leaf, trustStore.anchors(), pool(chain, List.of()))
+                ? build(leaf, trustStore.anchors(), pool(chain, Collections.<X509Certificate>emptyList()))
                 : null;
 
         int rootIndex = -1;
@@ -180,8 +182,8 @@ public final class TlsDoctor {
         }
         X509TrustManager delegate = null;
         for (TrustManager t : tmf.getTrustManagers()) {
-            if (t instanceof X509TrustManager x) {
-                delegate = x;
+            if (t instanceof X509TrustManager) {
+                delegate = (X509TrustManager) t;
                 break;
             }
         }
@@ -210,7 +212,7 @@ public final class TlsDoctor {
             SSLParameters params = socket.getSSLParameters();
             params.setEndpointIdentificationAlgorithm("HTTPS");
             try {
-                params.setServerNames(List.of(new SNIHostName(host)));
+                params.setServerNames(Collections.singletonList(new SNIHostName(host)));
             } catch (IllegalArgumentException ignored) {
                 // host is an IP address: no SNI possible
             }
@@ -229,13 +231,65 @@ public final class TlsDoctor {
         }
     }
 
-    private record Handshake(boolean connected, String protocol, String cipher, X509Certificate[] chain, String error) {
+    private static final class Handshake {
+
+        private final boolean connected;
+        private final String protocol;
+        private final String cipher;
+        private final X509Certificate[] chain;
+        private final String error;
+
+        Handshake(boolean connected, String protocol, String cipher, X509Certificate[] chain, String error) {
+            this.connected = connected;
+            this.protocol = protocol;
+            this.cipher = cipher;
+            this.chain = chain;
+            this.error = error;
+        }
+
         static Handshake fail(String error) {
             return new Handshake(false, null, null, null, error);
         }
+
+        boolean connected() {
+            return connected;
+        }
+
+        String protocol() {
+            return protocol;
+        }
+
+        String cipher() {
+            return cipher;
+        }
+
+        X509Certificate[] chain() {
+            return chain;
+        }
+
+        String error() {
+            return error;
+        }
     }
 
-    private record Build(PKIXCertPathBuilderResult result, String error) { }
+    private static final class Build {
+
+        private final PKIXCertPathBuilderResult result;
+        private final String error;
+
+        Build(PKIXCertPathBuilderResult result, String error) {
+            this.result = result;
+            this.error = error;
+        }
+
+        PKIXCertPathBuilderResult result() {
+            return result;
+        }
+
+        String error() {
+            return error;
+        }
+    }
 
     private static Build build(X509Certificate leaf, Set<TrustAnchor> anchors, List<X509Certificate> pool) {
         try {
@@ -277,7 +331,7 @@ public final class TlsDoctor {
             cur = cur.getCause();
         }
         String msg = cur.getMessage();
-        if (msg == null || msg.isBlank()) {
+        if (msg == null || msg.trim().isEmpty()) {
             msg = cur.getClass().getSimpleName();
         }
         if (cur instanceof CertificateExpiredException) {

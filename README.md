@@ -18,8 +18,11 @@ pass/fail exit code that is easy to use in scripts and CI.
 
 ## Requirements
 
-- Java 17 or newer to run
+- Java 8 or newer to run the tool
 - Gradle 8 or newer to build
+
+Note: the reported protocol depends on what the running JVM supports. Very old
+Java 8 releases only speak TLS 1.2; TLS 1.3 requires Java 11+ (or 8u261+).
 
 ## Build
 
