@@ -26,6 +26,12 @@ SNI-only deployments usually keep working for standard clients.
 The plain-text summary is colored when written to a terminal
 (never when redirected, never with `NO_COLOR` set, never with `--json`).
 
+## Building & contributing
+
+Basic file formatting rules (charset, indentation, final newlines) are defined
+in the plain `.editorconfig`, which most editors apply automatically — no
+extra tooling needed.
+
 ## Requirements
 
 - Java 8 or newer to run the tool
