@@ -19,6 +19,10 @@ pass/fail exit code that is easy to use in scripts and CI.
   SNI (servers that only present their certificate to SNI-aware clients will
   fail here; skipped for IP targets)
 
+`extras` and `sni` problems are warnings (yellow, exit code 0): the costly
+errors are a broken or untrusted chain, while extra/missing certificates and
+SNI-only deployments usually keep working for standard clients.
+
 The plain-text summary is colored when written to a terminal
 (never when redirected, never with `NO_COLOR` set, never with `--json`).
 
@@ -72,7 +76,7 @@ that chain to an internal or private CA.
 
 | Code | Meaning                                              |
 |------|------------------------------------------------------|
-| 0    | all checks passed                                    |
+| 0    | all checks passed (warnings allowed)                 |
 | 1    | at least one check failed                            |
 | 2    | usage error (bad arguments, unreadable truststore, …) |
 

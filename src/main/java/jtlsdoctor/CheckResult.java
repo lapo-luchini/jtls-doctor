@@ -34,6 +34,10 @@ public final class CheckResult {
         return new CheckResult(name, Status.FAIL, detail);
     }
 
+    public static CheckResult warn(String name, String detail) {
+        return new CheckResult(name, Status.WARN, detail);
+    }
+
     public static CheckResult skip(String name, String detail) {
         return new CheckResult(name, Status.SKIP, detail);
     }

@@ -164,7 +164,7 @@ public final class TlsDoctor {
         }
         return extra.isEmpty()
                 ? CheckResult.ok("extras", "no extra certificates")
-                : CheckResult.fail("extras", String.join("; ", extra));
+                : CheckResult.warn("extras", String.join("; ", extra));
     }
 
     /**
@@ -179,18 +179,18 @@ public final class TlsDoctor {
         Handshake noSni = handshake(host, port, false);
         X509Certificate[] noSniChain = noSni.chain();
         if (noSniChain == null || noSniChain.length == 0) {
-            return CheckResult.fail("sni", "TLS handshake failed without SNI: " + noSni.error());
+            return CheckResult.warn("sni", "TLS handshake failed without SNI: " + noSni.error());
         }
         try {
             if (!java.util.Arrays.equals(referenceLeaf.getEncoded(), noSniChain[0].getEncoded())) {
-                return CheckResult.fail("sni",
+                return CheckResult.warn("sni",
                         "server sent a different certificate without SNI: '" + name(noSniChain[0]) + "'");
             }
         } catch (java.security.cert.CertificateEncodingException e) {
             return CheckResult.skip("sni", "cannot compare certificates: " + e.getMessage());
         }
         if (!noSni.connected()) {
-            return CheckResult.fail("sni", "TLS handshake failed without SNI: " + noSni.error());
+            return CheckResult.warn("sni", "TLS handshake failed without SNI: " + noSni.error());
         }
         return CheckResult.ok("sni", "same certificate served without SNI");
     }
