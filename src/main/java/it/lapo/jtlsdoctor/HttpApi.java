@@ -76,6 +76,11 @@ public final class HttpApi {
     }
 
     private void handleRequest(HttpExchange exchange) {
+        String path = exchange.getRequestURI().getPath();
+        if (path.equals("/") || path.equals("/index.html")) {
+            serveIndex(exchange);
+            return;
+        }
         int status;
         String json;
         try {
@@ -104,6 +109,46 @@ public final class HttpApi {
         } catch (IOException ignored) {
             // client is gone; nothing to do
         }
+    }
+
+    /** Single-page app served from the classpath at / and /index.html. */
+    private void serveIndex(HttpExchange exchange) {
+        try {
+            byte[] page = indexPage();
+            exchange.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
+            exchange.sendResponseHeaders(200, page.length);
+            OutputStream out = exchange.getResponseBody();
+            out.write(page);
+            out.close();
+        } catch (IOException e) {
+            try {
+                byte[] bytes = ("error: " + e.getMessage()).getBytes(StandardCharsets.UTF_8);
+                exchange.sendResponseHeaders(500, bytes.length);
+                exchange.getResponseBody().write(bytes);
+                exchange.getResponseBody().close();
+            } catch (IOException ignored) {
+                // client is gone; nothing to do
+            }
+        }
+    }
+
+    private byte[] indexPage() throws IOException {
+        InputStream in = HttpApi.class.getResourceAsStream("/index.html");
+        if (in == null) {
+            throw new IOException("index.html resource not found");
+        }
+        return read(in);
+    }
+
+    private static byte[] read(InputStream in) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        byte[] buffer = new byte[8192];
+        int n;
+        while ((n = in.read(buffer)) > 0) {
+            out.write(buffer, 0, n);
+        }
+        in.close();
+        return out.toByteArray();
     }
 
     private Map<String, Object> check(HttpExchange exchange) throws IOException, GeneralSecurityException {

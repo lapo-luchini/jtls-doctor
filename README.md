@@ -143,7 +143,13 @@ $ jtls-doctor badssl.com --json
 
 ## HTTP API
 
-Instead of checking a single target, jtls-doctor can serve a minimal JSON API:
+Instead of checking a single target, jtls-doctor can serve a minimal JSON API
+plus a small single-page web interface:
+
+- `http://host:port/` (or `/index.html`) — browser UI: enter a host, run the
+  check and browse the report; certificates can be viewed in a modal,
+  downloaded as PEM or opened in the [asn1js.eu](https://asn1js.eu) viewer
+- `POST /check` (`GET /check?host=…`) — the same checks as JSON
 
 ```bash
 jtls-doctor --http :8080                      # listen on all interfaces

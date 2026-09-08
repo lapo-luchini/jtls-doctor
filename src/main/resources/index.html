@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>jtls-doctor</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%2347569' d='M12 2l8 3v6c0 5-3.4 9.6-8 11-4.6-1.4-8-6-8-11V5z'/%3E%3C/svg%3E">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f5f7fa; --card: #fff; --text: #1e2430; --muted: #667085;
+    --line: #e4e8ef; --accent: #2563eb; --ok: #16a34a; --ok-bg: #edfaf0;
+    --warn: #d97706; --warn-bg: #fdf6e3; --fail: #dc2626; --fail-bg: #fdeceb;
+    --skip: #64748b; --skip-bg: #eef1f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #10141c; --card: #191f2b; --text: #e6eaf2; --muted: #9aa5b5;
+      --line: #2a3142;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 740px; margin: 0 auto; padding: 32px 20px 64px; }
+  header { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+  header svg { width: 34px; height: 34px; }
+  h1 { font-size: 22px; letter-spacing: -.02em; margin: 0; }
+  header p { margin: 0; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  form { display: flex; gap: 8px; margin-bottom: 22px; }
+  input[type=text] {
+    flex: 1; padding: 10px 14px; font-size: 15px; color: var(--text);
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    transition: border-color .15s;
+  }
+  input[type=text]:focus { border-color: var(--accent); outline: none; }
+  button {
+    padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer;
+    color: #fff; background: var(--accent); border: 0; border-radius: 8px;
+    transition: opacity .15s;
+  }
+  button:hover { opacity: .88; }
+  button[disabled] { opacity: .5; cursor: progress; }
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 18px 20px; margin-bottom: 14px;
+  }
+  .banner { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .banner .target {
+    font-weight: 600; font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 14px; overflow-wrap: anywhere;
+  }
+  .chip {
+    padding: 3px 12px; border-radius: 999px; font-size: 12px; font-weight: 700;
+    letter-spacing: .04em; text-transform: uppercase; white-space: nowrap;
+  }
+  .chip.PASS { color: var(--ok); background: var(--ok-bg); }
+  .chip.WARN { color: var(--warn); background: var(--warn-bg); }
+  .chip.FAIL { color: var(--fail); background: var(--fail-bg); }
+  .chip.SKIP { color: var(--skip); background: var(--skip-bg); }
+  .counts { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  h2 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--muted); margin: 24px 0 10px;
+  }
+  ul.checks { list-style: none; margin: 0; padding: 0; }
+  ul.checks li { display: flex; gap: 10px; padding: 4px 0; align-items: baseline; }
+  ul.checks .name { width: 118px; flex: none; font-weight: 600; font-size: 13.5px; }
+  ul.checks .detail { color: var(--muted); font-size: 13.5px; overflow-wrap: anywhere; }
+  dl.grid {
+    display: grid; grid-template-columns: 92px 1fr; row-gap: 2px;
+    column-gap: 10px; font-size: 14px; margin: 0;
+  }
+  dl.grid dt { color: var(--muted); }
+  dl.grid dd {
+    margin: 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px; overflow-wrap: anywhere;
+  }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .actions button, .actions a {
+    padding: 6px 14px; font-size: 12.5px; border-radius: 7px; cursor: pointer;
+    text-decoration: none; text-align: center; display: inline-block;
+    background: none; border: 1px solid var(--line); color: var(--accent);
+    transition: border-color .15s, color .15s;
+  }
+  .actions button:hover, .actions a:hover { border-color: var(--accent); color: var(--accent); }
+  dialog {
+    width: min(720px, 92vw); max-height: 84vh; border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; color: var(--text);
+    background: var(--card);
+  }
+  dialog::backdrop { background: rgb(0 0 0 / .45); }
+  dialog h3 { margin: 0 0 4px; font-size: 16px; overflow-wrap: anywhere; }
+  dialog .sub { color: var(--muted); font-size: 13px; margin: 4px 0; }
+  dialog pre {
+    max-height: 46vh; overflow: auto; font-size: 12px; line-height: 1.35;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+    padding: 14px; white-space: pre; user-select: all; margin-top: 12px;
+  }
+  dialog .close { float: right; color: var(--muted); background: none; border: 1px solid var(--line); }
+  #error { color: var(--fail); font-size: 14px; margin-bottom: 14px; }
+  #error:empty { display: none; }
+  #spinner { color: var(--muted); margin-bottom: 14px; }
+  #spinner { display: none; }
+  #spinner.on { display: inline-block; }
+  .spin {
+    display: inline-block; width: 13px; height: 13px; border: 2px solid var(--line);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin .8s linear infinite; vertical-align: -2px; margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  footer { margin-top: 40px; color: var(--muted); font-size: 12px; text-align: center; }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="var(--accent)" d="M12 2l8 3v6c0 5-3.4 10-8 11-4.39-1-8-6-8-11V5z"/></svg>
+    <div>
+      <h1>jtls-doctor</h1>
+      <p class="sub">Verify that a TLS server presents a correct certificate chain.</p>
+    </div>
+  </header>
+
+  <form id="f" autocomplete="off">
+    <input id="host" type="text" inputmode="url" placeholder="example.com:443" aria-label="Host to check" autofocus>
+    <button type="submit" id="go">Check</button>
+  </form>
+  <p id="error"></p>
+  <p id="spinner"><span class="spin"></span>establishing connection&hellip;</p>
+
+  <section id="result" hidden>
+    <div class="card">
+      <div class="banner">
+        <span class="target"></span>
+        <span class="chip" id="chip"><span id="chip-label"></span></span>
+        <span class="counts"></span>
+      </div>
+    </div>
+    <h2>Checks</h2>
+    <div class="card"><ul class="checks" id="checks"></ul></div>
+    <h2>Certificate chain</h2>
+    <div id="chain"></div>
+  </section>
+
+  <footer>
+    full ASN.1 certificate dump at
+    <a href="https://asn1js.eu" target="_blank" rel="noopener">asn1js.eu</a>
+  </footer>
+</main>
+
+<dialog id="dlg">
+  <button class="close" onclick="dlg.close()">Close</button>
+  <h3 id="dlg-subject"></h3>
+  <p class="sub" id="dlg-meta"></p>
+  <pre id="dlg-pem"></pre>
+  <p class="sub">Full ASN.1 dump:
+    <a id="dlg-asn1" href="#" target="_blank" rel="noopener">asn1js.eu</a></p>
+</dialog>
+
+<script>
+function $(s) { return document.querySelector(s); }
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, function (m) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+  });
+}
+
+function parseTarget(value) {
+  let t = value.trim().replace(/^https?:\/\//, '').replace(/\/+$/, '');
+  let host = t, port = 443;
+  if (t.indexOf(']') >= 0) {
+    let end = t.indexOf(']');
+    host = t.slice(1, end);
+    let p = t.slice(end + 1);
+    if (p.startsWith(':')) port = p.slice(1);
+  } else {
+    let c = t.lastIndexOf(':');
+    if (c > 0) { host = t.slice(0, c); port = t.slice(c + 1); }
+  }
+  if (!host) throw new Error('please enter a host name');
+  port = parseInt(port, 10);
+  if (!(port >= 1 && port <= 65535)) throw new Error('invalid port: ' + port);
+  return { host: host, port: port };
+}
+
+function pemToBase64(pem) {
+  return pem.replace(/-----[^-]*-----/g, '').replace(/\s+/g, '');
+}
+
+function chip(status) {
+  const chip = $('#chip');
+  chip.className = 'chip ' + status;
+  $('#chip-label').textContent = status;
+}
+
+function addCheck(name, status, detail) {
+  const li = document.createElement('li');
+  li.innerHTML = '<span class="chip ' + esc(status) + '">' + esc(status) + '</span>'
+    + '<span class="name">' + esc(name) + '</span>'
+    + '<span class="detail">' + esc(detail || '') + '</span>';
+  $('#checks').appendChild(li);
+}
+
+function addCert(cert, index, count, host) {
+  const div = document.createElement('div');
+  div.className = 'card cert';
+  div.innerHTML = '<dl class="grid">'
+    + '<dt>Subject</dt><dd>' + esc(cert.subject) + '</dd>'
+    + '<dt>Issuer</dt><dd>' + esc(cert.issuer) + '</dd>'
+    + '<dt>Not&nbsp;before</dt><dd>' + esc(cert.notbefore) + '</dd>'
+    + '<dt>Not&nbsp;after</dt><dd>' + esc(cert.notafter) + '</dd>'
+    + '</dl>'
+    + '<div class="actions">'
+    + '<a id="asn-' + index + '" href="#" target="_blank" rel="noopener">View in ASN.1 viewer</a>'
+    + '<button type="button" id="btn-' + index + '">Show certificate</button>'
+    + '<a id="dl-' + index + '" download="' + esc(host) + '-' + (index + 1) + '.pem">Download PEM</a>'
+    + '</div>';
+
+  const b64 = pemToBase64(cert.pem);
+  div.querySelector('#asn-' + index).href = 'https://asn1js.eu/#' + b64;
+  div.querySelector('#dl-' + index).href =
+    'data:application/x-pem-file,' + encodeURIComponent(cert.pem);
+
+  const dialog = $('#dlg');
+  div.querySelector('#btn-' + index).onclick = function () {
+    $('#dlg-subject').textContent = 'Certificate ' + (index + 1) + ' of ' + count;
+    $('#dlg-meta').textContent =
+      cert.subject + ' — issued by ' + cert.issuer + ' — valid ' + cert.notbefore + ' / ' + cert.notafter;
+    $('#dlg-pem').textContent = cert.pem;
+    $('#dlg-asn1').href = div.querySelector('#asn-' + index).href;
+    $('#dlg').showModal();
+  };
+  return div;
+}
+
+function render(data) {
+  $('#result').hidden = false;
+  $('.banner .target').textContent = data.target;
+  chip(data.result);
+  $('.counts').textContent =
+    (data.errors || 0) + ' error(s), ' + (data.warnings || 0) + ' warning(s)';
+  $('#checks').innerHTML = '';
+  (data.checks || []).forEach(function (c) { addCheck(c.name, c.status, c.detail); });
+  const host = data.target.split(':')[0];
+  $('#chain').innerHTML = '';
+  (data.certificates || []).forEach(function (cert, i) {
+    $('#chain').appendChild(addCert(cert, i, data.certificates.length, host));
+  });
+}
+
+$('#f').addEventListener('submit', function (ev) {
+  ev.preventDefault();
+  $('#error').textContent = '';
+  let req;
+  try {
+    req = parseTarget($('#host').value);
+  } catch (e) {
+    $('#error').textContent = e.message;
+    return;
+  }
+  $('#spinner').classList.add('on');
+  $('#go').disabled = true;
+  fetch('/check', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ host: req.host, port: req.port, dumpChain: true })
+  }).then(function (res) {
+    return res.json().then(function (data) {
+      if (!res.ok) throw new Error(data.error || 'request failed');
+      render(data);
+    });
+  }).catch(function (e) {
+    $('#error').textContent = e.message || 'request failed';
+  }).finally(function close() {
+    $('#spinner').classList.remove('on');
+    $('#go').disabled = false;
+  });
+});
+</script>
+</body>
+</html>
