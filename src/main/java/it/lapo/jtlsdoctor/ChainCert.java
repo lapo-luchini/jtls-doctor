@@ -1,4 +1,4 @@
-package jtlsdoctor;
+package it.lapo.jtlsdoctor;
 
 import java.time.Instant;
 

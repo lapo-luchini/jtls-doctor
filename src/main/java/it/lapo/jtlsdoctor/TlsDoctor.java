@@ -1,4 +1,4 @@
-package jtlsdoctor;
+package it.lapo.jtlsdoctor;
 
 import java.io.IOException;
 import java.net.InetAddress;
