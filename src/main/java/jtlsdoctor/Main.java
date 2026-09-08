@@ -296,10 +296,11 @@ public final class Main {
         out.println("  --truststore-password <pw>  truststore password (default: changeit)");
         out.println("  --http <[host:]port>        run the JSON API instead of checking one target");
         out.println("                              (single endpoint: POST /check)");
-        out.println("  --json                      output the result as JSON (requires a target)");
-        out.println("  --dump-chain [file]         dump the sent certificate chain in PEM form to");
-        out.println("                              <file>; without a filename it is only printed");
-        out.println("                              to stdout as the \"certificates\" array (--json)");
+        out.println("  --json                      output the result as JSON (requires a target; always");
+        out.println("                              identical to the equivalent HTTP API response)");
+        out.println("  --dump-chain [file]         write the certificate chain sent by the server in PEM");
+        out.println("                              form to <file>; without a filename, and only with");
+        out.println("                              --json, it is included as the \"certificatePEMs\"");
         out.println("  -h, --help                  show this help");
         out.println();
         out.println("Exit codes: 0 all checks passed, 1 checks failed, 2 usage error");

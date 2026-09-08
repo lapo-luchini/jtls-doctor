@@ -154,8 +154,8 @@ public final class HttpApi {
             trustStore = TrustStore.fromPem((String) pem);
         }
 
-        boolean withChain = "true".equalsIgnoreCase(String.valueOf(params.get("dumpChain")));
-        return new TlsDoctor(trustStore).check(host, port).json(withChain);
+        boolean dump = "true".equalsIgnoreCase(String.valueOf(params.get("dumpChain")));
+        return new TlsDoctor(trustStore).check(host, port).json(dump);
     }
 
     /** Query parameters, overridden by a JSON request body object if present. */

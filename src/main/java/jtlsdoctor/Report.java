@@ -46,6 +46,15 @@ public final class Report {
         return pems;
     }
 
+    /** Chain metadata (subject/issuer/validity) in the same order as chainPem(). */
+    public List<Map<String, Object>> certificateInfo() {
+        List<Map<String, Object>> info = new ArrayList<Map<String, Object>>();
+        for (ChainCert c : chain) {
+            info.add(c.infoJson());
+        }
+        return info;
+    }
+
     public CheckResult.Status overall() {
         boolean warn = false;
         for (CheckResult c : checks) {
@@ -64,9 +73,9 @@ public final class Report {
     }
 
     /**
-     * Report as JSON-ready data: same structure as the HTTP API response.
-     * When withChainPem is true, the sent certificates are added as a
-     * "certificates" array of PEM blocks (in the order they were sent).
+     * Report as JSON-ready data: same structure as the HTTP API response
+     * ("certificates" metadata always present; "certificatePEMs" only when
+     * the chain dump is requested).
      */
     public Map<String, Object> json(boolean withChainPem) {
         Map<String, Object> m = new LinkedHashMap<String, Object>();
@@ -85,8 +94,9 @@ public final class Report {
             list.add(cj);
         }
         m.put("checks", list);
+        m.put("certificates", certificateInfo());
         if (withChainPem) {
-            m.put("certificates", chainPem());
+            m.put("certificatePEMs", chainPem());
         }
         return m;
     }
