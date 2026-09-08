@@ -40,13 +40,18 @@ public final class ChainCert {
     }
 
     /**
-     * Metadata as JSON-ready data: {"subject": .., "issuer": .., "valid": ..}.
+     * Metadata as JSON-ready data: {"subject": .., "issuer": .., "notbefore":
+     * .., "notafter": ..} plus ("pem" only when the chain dump is requested).
      */
-    public java.util.Map<String, Object> infoJson() {
+    public java.util.Map<String, Object> infoJson(boolean withPem) {
         java.util.Map<String, Object> m = new java.util.LinkedHashMap<String, Object>();
         m.put("subject", subject);
         m.put("issuer", issuer);
-        m.put("valid", iso(notBefore) + " / " + iso(notAfter));
+        m.put("notbefore", iso(notBefore));
+        m.put("notafter", iso(notAfter));
+        if (withPem) {
+            m.put("pem", pem);
+        }
         return m;
     }
 

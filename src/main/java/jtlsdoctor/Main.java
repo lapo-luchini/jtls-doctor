@@ -300,7 +300,7 @@ public final class Main {
         out.println("                              identical to the equivalent HTTP API response)");
         out.println("  --dump-chain [file]         write the certificate chain sent by the server in PEM");
         out.println("                              form to <file>; without a filename, and only with");
-        out.println("                              --json, it is included as the \"certificatePEMs\"");
+        out.println("                              --json, each \"certificates\" entry gains a \"pem\"");
         out.println("  -h, --help                  show this help");
         out.println();
         out.println("Exit codes: 0 all checks passed, 1 checks failed, 2 usage error");

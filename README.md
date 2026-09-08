@@ -75,9 +75,8 @@ Options:
                               HTTP API would answer for the same request
   --dump-chain [file]         dump the certificate chain as sent by the server in PEM
                               form to <file>, each block preceded by subject/issuer/
-                              validity; without a filename, and only with --json,
-                              it is instead included in the output as the
-                              "certificatePEMs" array
+                              validity; without a filename, and only with --json, each
+                              "certificates" entry in the output gains a "pem" field
   -h, --help                  show this help
 ```
 
@@ -158,15 +157,15 @@ It runs until interrupted and exposes a single endpoint, `POST /check`
 | `port`          | number | optional, defaults to 443                           |
 | `truststorePem` | string | optional: PEM certificate(s) used as truststore    |
 |                 |        | instead of the server's default truststore          |
-| `dumpChain`     | bool   | optional: when `true`, a `certificatePEMs` array    |
-|                 |        | with the PEM block of every certificate sent by     |
-|                 |        | the server (in order) is added to the response      |
+| `dumpChain`     | bool   | optional: when `true`, each element of `certificates`|
+|                 |        | gains a `pem` field with the PEM block of that       |
+|                 |        | certificate                                          |
 
 The response always includes a `certificates` array describing the chain in
 the order the server sent it; each element is an object with `subject`,
-`issuer` and `valid` (ISO instants). The PEM blocks themselves are only sent
-on request, as the parallel `certificatePEMs` array. `jtls-doctor --json`
-returns exactly the same JSON.
+`issuer` and `notbefore`/`notafter` (ISO 8601 instants). The PEM blocks are
+only added (as a `pem` field of each element) when requested.
+`jtls-doctor --json` returns exactly the same JSON.
 
 The result is always HTTP `200` if a check ran; `result` carries the verdict.
 HTTP `400` is returned for malformed requests (bad JSON, missing/invalid host
