@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import javax.net.ssl.SNIHostName;
+import javax.net.ssl.SNIServerName;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLSocket;
@@ -254,6 +255,10 @@ public final class TlsDoctor {
             params.setEndpointIdentificationAlgorithm("HTTPS");
             if (useSni && canUseSni(host)) {
                 params.setServerNames(Collections.singletonList(new SNIHostName(host)));
+            } else {
+                // null server names mean "JSSE default" (SNI derived from the peer
+                // host!); only an explicitly empty list omits the SNI extension
+                params.setServerNames(Collections.<SNIServerName>emptyList());
             }
             socket.setSSLParameters(params);
             socket.startHandshake();

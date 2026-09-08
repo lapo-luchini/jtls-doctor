@@ -81,10 +81,10 @@ that chain to an internal or private CA.
 A correctly configured server:
 
 ```
-$ jtls-doctor badssl.com
-badssl.com:443  (truststore: default JVM cacerts)
-  connect        OK   TLSv1.2, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
-  chain-order    OK   3 certificate(s) sent, leaf-to-root order valid
+$ jtls-doctor www.lapo.it
+www.lapo.it:443  (truststore: default JVM cacerts)
+  connect        OK   TLSv1.3, TLS_AES_256_GCM_SHA384
+  chain-order    OK   4 certificate(s) sent, leaf-to-root order valid
   intermediates  OK   all required intermediates sent
   trust          OK   root CA 'CN=ISRG Root X1' trusted via default JVM cacerts
   extras         OK   no extra certificates
@@ -92,7 +92,8 @@ badssl.com:443  (truststore: default JVM cacerts)
 RESULT: PASS
 ```
 
-A server that does not send its intermediate certificate:
+A server that does not send its intermediate certificate (and also serves
+its fallback certificate to clients without SNI):
 
 ```
 $ jtls-doctor incomplete-chain.badssl.com
@@ -102,7 +103,7 @@ incomplete-chain.badssl.com:443  (truststore: default JVM cacerts)
   intermediates  FAIL missing intermediate certificate(s) between 'CN=*.badssl.com' and a trusted root
   trust          FAIL cannot build a trusted certification path: unable to find valid certification path to requested target
   extras         OK   no extra certificates
-  sni            FAIL TLS handshake failed without SNI: unable to find valid certification path to requested target
+  sni            FAIL server sent a different certificate without SNI: 'CN=badssl-fallback-unknown-subdomain-or-no-sni'
 RESULT: FAIL (4 errors)
 ```
 
