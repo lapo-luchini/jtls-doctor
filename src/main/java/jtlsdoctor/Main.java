@@ -27,6 +27,7 @@ public final class Main {
     private static void run(String[] args) throws IOException, GeneralSecurityException, InterruptedException {
         String targetArg = null;
         String httpBind = null;
+        boolean jsonOutput = false;
         Path truststorePath = null;
         char[] truststorePassword = "changeit".toCharArray();
 
@@ -41,6 +42,8 @@ public final class Main {
                 truststorePassword = value(args, ++i, a).toCharArray();
             } else if (a.equals("--http")) {
                 httpBind = value(args, ++i, a);
+            } else if (a.equals("--json")) {
+                jsonOutput = true;
             } else {
                 if (a.startsWith("-")) {
                     throw new UsageException("unknown option: " + a);
@@ -54,6 +57,9 @@ public final class Main {
 
         if (targetArg != null && httpBind != null) {
             throw new UsageException("--http cannot be combined with a target host");
+        }
+        if (jsonOutput && httpBind != null) {
+            throw new UsageException("--json cannot be combined with --http");
         }
 
         TrustStore trustStore = truststorePath == null
@@ -75,7 +81,11 @@ public final class Main {
         int port = Integer.parseInt(hp[1]);
 
         Report report = new TlsDoctor(trustStore).check(host, port);
-        print(report);
+        if (jsonOutput) {
+            System.out.println(Json.write(report.json()));
+        } else {
+            print(report);
+        }
         System.exit(report.overall() == CheckResult.Status.FAIL ? 1 : 0);
     }
 
@@ -219,6 +229,7 @@ public final class Main {
         out.println("  --truststore-password <pw>  truststore password (default: changeit)");
         out.println("  --http <[host:]port>        run the JSON API instead of checking one target");
         out.println("                              (single endpoint: POST /check)");
+        out.println("  --json                      output the result as JSON (requires a target)");
         out.println("  -h, --help                  show this help");
         out.println();
         out.println("Exit codes: 0 all checks passed, 1 checks failed, 2 usage error");

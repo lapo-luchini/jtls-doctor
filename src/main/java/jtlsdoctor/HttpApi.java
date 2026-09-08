@@ -81,7 +81,7 @@ public final class HttpApi {
         int status;
         String json;
         try {
-            json = Json.write(reportJson(check(exchange)));
+            json = Json.write(check(exchange).json());
             status = 200;
         } catch (BadRequest e) {
             json = errorJson(e.getMessage());
@@ -204,27 +204,6 @@ public final class HttpApi {
             throw badRequest("cannot read request body: " + e.getMessage());
         }
         return new String(out.toByteArray(), StandardCharsets.UTF_8).trim();
-    }
-
-    private static Map<String, Object> reportJson(Report report) {
-        Map<String, Object> m = new LinkedHashMap<String, Object>();
-        m.put("target", report.target());
-        m.put("truststore", report.trustStoreDescription());
-        CheckResult.Status overall = report.overall();
-        m.put("result", overall == CheckResult.Status.FAIL ? "FAIL"
-                : overall == CheckResult.Status.WARN ? "WARN" : "PASS");
-        m.put("errors", Long.valueOf(report.count(CheckResult.Status.FAIL)));
-        m.put("warnings", Long.valueOf(report.count(CheckResult.Status.WARN)));
-        List<Object> checks = new ArrayList<Object>();
-        for (CheckResult c : report.checks()) {
-            Map<String, Object> cj = new LinkedHashMap<String, Object>();
-            cj.put("name", c.name());
-            cj.put("status", c.status().name());
-            cj.put("detail", c.detail());
-            checks.add(cj);
-        }
-        m.put("checks", checks);
-        return m;
     }
 
     private static String errorJson(String message) {

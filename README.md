@@ -54,6 +54,8 @@ Options:
   --truststore-password <pw>  truststore password (default: changeit)
   --http <[host:]port>        run the JSON API instead of checking one target
                               (single endpoint: POST /check)
+  --json                      output the result as JSON instead of the plain-text
+                              summary (same format as the HTTP API; requires a target)
   -h, --help                  show this help
 ```
 
@@ -101,6 +103,15 @@ truststore instead of `cacerts`:
 
 ```
 $ jtls-doctor internal.example.org:8443 --truststore /etc/pki/company-ca.p12
+```
+
+With `--json`, the same data as the HTTP API is printed as JSON
+(exit codes are unchanged):
+
+```bash
+$ jtls-doctor badssl.com --json
+{"target":"badssl.com:443","truststore":"default JVM cacerts","result":"PASS",
+ "errors":0,"warnings":0,"checks":[{"name":"connect","status":"OK","detail":"..."},...]}
 ```
 
 ## HTTP API

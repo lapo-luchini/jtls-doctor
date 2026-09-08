@@ -2,7 +2,10 @@ package jtlsdoctor;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public final class Report {
 
@@ -43,5 +46,28 @@ public final class Report {
 
     public long count(CheckResult.Status status) {
         return checks.stream().filter(c -> c.status() == status).count();
+    }
+
+    /**
+     * Report as JSON-ready data: same structure as the HTTP API response.
+     */
+    public Map<String, Object> json() {
+        Map<String, Object> m = new LinkedHashMap<String, Object>();
+        m.put("target", target);
+        m.put("truststore", trustStoreDescription);
+        m.put("result", overall() == CheckResult.Status.FAIL ? "FAIL"
+                : overall() == CheckResult.Status.WARN ? "WARN" : "PASS");
+        m.put("errors", Long.valueOf(count(CheckResult.Status.FAIL)));
+        m.put("warnings", Long.valueOf(count(CheckResult.Status.WARN)));
+        List<Object> list = new ArrayList<Object>();
+        for (CheckResult c : checks) {
+            Map<String, Object> cj = new LinkedHashMap<String, Object>();
+            cj.put("name", c.name());
+            cj.put("status", c.status().name());
+            cj.put("detail", c.detail());
+            list.add(cj);
+        }
+        m.put("checks", list);
+        return m;
     }
 }
