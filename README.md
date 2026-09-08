@@ -35,16 +35,19 @@ extra tooling needed.
 ## Requirements
 
 - Java 8 or newer to run the tool
-- Gradle 8 or newer to build
+- Java 17 or newer to build (the Gradle wrapper needs it)
 
 Note: the reported protocol depends on what the running JVM supports. Very old
 Java 8 releases only speak TLS 1.2; TLS 1.3 requires Java 11+ (or 8u261+).
 
 ## Build
 
+No Gradle installation is needed: use the bundled wrapper
+(`gradlew.bat` on Windows).
+
 ```bash
-gradle build          # produces build/libs/jtls-doctor-<version>.jar
-gradle installDist    # produces a start script in build/install/jtls-doctor/bin/
+./gradlew build          # produces build/libs/jtls-doctor-<version>.jar
+./gradlew installDist    # produces a start script in build/install/jtls-doctor/bin/
 ```
 
 ## Run
@@ -52,7 +55,7 @@ gradle installDist    # produces a start script in build/install/jtls-doctor/bin
 ```bash
 java -jar build/libs/jtls-doctor-0.1.0.jar example.com:443
 
-# or, after `gradle installDist`:
+# or, after `./gradlew installDist`:
 build/install/jtls-doctor/bin/jtls-doctor example.com
 ```
 
