@@ -66,6 +66,10 @@ Options:
                               (single endpoint: POST /check)
   --json                      output the result as JSON instead of the plain-text
                               summary (same format as the HTTP API; requires a target)
+  --dump-chain [file]         dump the certificate chain as sent by the server in PEM
+                              form to <file>; without a filename, and only with --json,
+                              it is instead included in the output as the
+                              "certificates" array
   -h, --help                  show this help
 ```
 
@@ -146,6 +150,9 @@ It runs until interrupted and exposes a single endpoint, `POST /check`
 | `port`          | number | optional, defaults to 443                           |
 | `truststorePem` | string | optional: PEM certificate(s) used as truststore    |
 |                 |        | instead of the server's default truststore          |
+| `dumpChain`     | bool   | optional: when `true`, a `certificates` array with  |
+|                 |        | the PEM block of every certificate sent by the      |
+|                 |        | server (in order) is added to the response          |
 
 The result is always HTTP `200` if a check ran; `result` carries the verdict.
 HTTP `400` is returned for malformed requests (bad JSON, missing/invalid host

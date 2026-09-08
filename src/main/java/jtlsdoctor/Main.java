@@ -1,10 +1,13 @@
 package jtlsdoctor;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
+import java.util.List;
 
 public final class Main {
 
@@ -36,6 +39,8 @@ public final class Main {
         String targetArg = null;
         String httpBind = null;
         boolean jsonOutput = false;
+        boolean dumpChain = false;
+        Path chainDumpFile = null;
         Path truststorePath = null;
         char[] truststorePassword = "changeit".toCharArray();
 
@@ -52,6 +57,11 @@ public final class Main {
                 httpBind = value(args, ++i, a);
             } else if (a.equals("--json")) {
                 jsonOutput = true;
+            } else if (a.equals("--dump-chain")) {
+                dumpChain = true;
+                if (i + 1 < args.length && !args[i + 1].startsWith("-")) {
+                    chainDumpFile = Paths.get(args[++i]);
+                }
             } else {
                 if (a.startsWith("-")) {
                     throw new UsageException("unknown option: " + a);
@@ -68,6 +78,12 @@ public final class Main {
         }
         if (jsonOutput && httpBind != null) {
             throw new UsageException("--json cannot be combined with --http");
+        }
+        if (dumpChain && httpBind != null) {
+            throw new UsageException("--dump-chain cannot be combined with --http");
+        }
+        if (dumpChain && chainDumpFile == null && !jsonOutput) {
+            throw new UsageException("--dump-chain needs a filename (it is printed to stdout only with --json)");
         }
 
         TrustStore trustStore = truststorePath == null
@@ -89,12 +105,27 @@ public final class Main {
         int port = Integer.parseInt(hp[1]);
 
         Report report = new TlsDoctor(trustStore).check(host, port);
+        if (dumpChain && chainDumpFile != null) {
+            writeChain(report, chainDumpFile);
+        }
         if (jsonOutput) {
-            System.out.println(Json.write(report.json()));
+            System.out.println(Json.write(report.json(dumpChain)));
         } else {
             print(report);
         }
         System.exit(report.overall() == CheckResult.Status.FAIL ? 1 : 0);
+    }
+
+    private static void writeChain(Report report, Path file) throws IOException {
+        BufferedWriter out = Files.newBufferedWriter(file);
+        try {
+            for (String pem : report.chainPem()) {
+                out.write(pem);
+                out.write('\n');
+            }
+        } finally {
+            out.close();
+        }
     }
 
     private static String value(String[] args, int index, String option) {
@@ -266,6 +297,9 @@ public final class Main {
         out.println("  --http <[host:]port>        run the JSON API instead of checking one target");
         out.println("                              (single endpoint: POST /check)");
         out.println("  --json                      output the result as JSON (requires a target)");
+        out.println("  --dump-chain [file]         dump the sent certificate chain in PEM form to");
+        out.println("                              <file>; without a filename it is only printed");
+        out.println("                              to stdout as the \"certificates\" array (--json)");
         out.println("  -h, --help                  show this help");
         out.println();
         out.println("Exit codes: 0 all checks passed, 1 checks failed, 2 usage error");

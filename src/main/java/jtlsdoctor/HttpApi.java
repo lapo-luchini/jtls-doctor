@@ -81,7 +81,7 @@ public final class HttpApi {
         int status;
         String json;
         try {
-            json = Json.write(check(exchange).json());
+            json = Json.write(check(exchange));
             status = 200;
         } catch (BadRequest e) {
             json = errorJson(e.getMessage());
@@ -108,7 +108,7 @@ public final class HttpApi {
         }
     }
 
-    private Report check(HttpExchange exchange) throws IOException, GeneralSecurityException {
+    private Map<String, Object> check(HttpExchange exchange) throws IOException, GeneralSecurityException {
         String uriPath = exchange.getRequestURI().getPath();
         if (!uriPath.equals("/check") && !uriPath.equals("/check/")) {
             throw new BadRequest("unknown path " + uriPath + ": use POST /check", 404);
@@ -154,7 +154,8 @@ public final class HttpApi {
             trustStore = TrustStore.fromPem((String) pem);
         }
 
-        return new TlsDoctor(trustStore).check(host, port);
+        boolean withChain = "true".equalsIgnoreCase(String.valueOf(params.get("dumpChain")));
+        return new TlsDoctor(trustStore).check(host, port).json(withChain);
     }
 
     /** Query parameters, overridden by a JSON request body object if present. */

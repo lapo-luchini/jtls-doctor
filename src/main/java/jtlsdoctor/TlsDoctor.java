@@ -58,7 +58,8 @@ public final class TlsDoctor {
             for (String n : Arrays.asList("sni", "trust", "chain-order", "intermediates", "extras")) {
                 checks.add(CheckResult.skip(n, why));
             }
-            return new Report(target, trustStore.description(), checks);
+            return new Report(target, trustStore.description(), checks,
+                    Collections.<String>emptyList());
         }
 
         List<X509Certificate> chain = Arrays.asList(sent);
@@ -134,7 +135,26 @@ public final class TlsDoctor {
         checks.add(extrasCheck(chain, rootIndex, r1));
         checks.add(sniCheck(host, port, leaf));
 
-        return new Report(target, trustStore.description(), checks);
+        List<String> chainPem = new ArrayList<String>();
+        for (X509Certificate c : chain) {
+            chainPem.add(pem(c));
+        }
+
+        return new Report(target, trustStore.description(), checks, chainPem);
+    }
+
+    private static String pem(X509Certificate c) {
+        StringBuilder sb = new StringBuilder("-----BEGIN CERTIFICATE-----\n");
+        sb.append(java.util.Base64.getMimeEncoder(64, new byte[] { '\n' }).encodeToString(encoded(c)));
+        return sb.append("\n-----END CERTIFICATE-----\n").toString();
+    }
+
+    private static byte[] encoded(X509Certificate c) {
+        try {
+            return c.getEncoded();
+        } catch (java.security.cert.CertificateEncodingException e) {
+            throw new IllegalStateException("cannot encode certificate: " + e.getMessage(), e);
+        }
     }
 
     private CheckResult extrasCheck(List<X509Certificate> chain, int rootIndex, Build r1) {
