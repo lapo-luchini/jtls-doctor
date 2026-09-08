@@ -1,4 +1,4 @@
-package jtlsdoctor;
+package it.lapo.jtlsdoctor;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;

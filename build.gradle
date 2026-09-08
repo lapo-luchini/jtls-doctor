@@ -11,11 +11,11 @@ java {
 }
 
 application {
-    mainClass = 'jtlsdoctor.Main'
+    mainClass = 'it.lapo.jtlsdoctor.Main'
 }
 
 jar {
     manifest {
-        attributes 'Main-Class': 'jtlsdoctor.Main'
+        attributes 'Main-Class': 'it.lapo.jtlsdoctor.Main'
     }
 }
