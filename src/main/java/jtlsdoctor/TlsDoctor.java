@@ -45,7 +45,7 @@ public final class TlsDoctor {
     public Report check(String host, int port) {
         List<CheckResult> checks = new ArrayList<>();
 
-        Handshake hs = handshake(host, port);
+        Handshake hs = handshake(host, port, true);
         checks.add(hs.connected()
                 ? CheckResult.ok("connect", hs.protocol() + ", " + hs.cipher())
                 : CheckResult.fail("connect", hs.error()));
@@ -54,7 +54,7 @@ public final class TlsDoctor {
         X509Certificate[] sent = hs.chain();
         if (sent == null || sent.length == 0) {
             String why = hs.connected() ? "server sent no certificates" : "no certificate chain received";
-            for (String n : Arrays.asList("trust", "chain-order", "intermediates", "extras")) {
+            for (String n : Arrays.asList("sni", "trust", "chain-order", "intermediates", "extras")) {
                 checks.add(CheckResult.skip(n, why));
             }
             return new Report(target, trustStore.description(), checks);
@@ -131,6 +131,7 @@ public final class TlsDoctor {
         checks.add(trust);
 
         checks.add(extrasCheck(chain, rootIndex, r1));
+        checks.add(sniCheck(host, port, leaf));
 
         return new Report(target, trustStore.description(), checks);
     }
@@ -165,7 +166,47 @@ public final class TlsDoctor {
                 : CheckResult.fail("extras", String.join("; ", extra));
     }
 
-    private Handshake handshake(String host, int port) {
+    /**
+     * Reconnects without SNI and compares the served leaf certificate with the
+     * one received in the main (SNI) handshake: servers configured to select
+     * their certificate by SNI would serve something different to old clients.
+     */
+    private CheckResult sniCheck(String host, int port, X509Certificate referenceLeaf) {
+        if (!canUseSni(host)) {
+            return CheckResult.skip("sni", "not applicable: host is an IP address");
+        }
+        Handshake noSni = handshake(host, port, false);
+        X509Certificate[] noSniChain = noSni.chain();
+        if (noSniChain == null || noSniChain.length == 0) {
+            return CheckResult.fail("sni", "TLS handshake failed without SNI: " + noSni.error());
+        }
+        try {
+            if (!java.util.Arrays.equals(referenceLeaf.getEncoded(), noSniChain[0].getEncoded())) {
+                return CheckResult.fail("sni",
+                        "server sent a different certificate without SNI: '" + name(noSniChain[0]) + "'");
+            }
+        } catch (java.security.cert.CertificateEncodingException e) {
+            return CheckResult.skip("sni", "cannot compare certificates: " + e.getMessage());
+        }
+        if (!noSni.connected()) {
+            return CheckResult.fail("sni", "TLS handshake failed without SNI: " + noSni.error());
+        }
+        return CheckResult.ok("sni", "same certificate served without SNI");
+    }
+
+    private static boolean canUseSni(String host) {
+        // SNIHostName does not reject IP literals, but IP targets are exactly
+        // the case where SNI cannot (and must not) be used
+        for (int i = 0; i < host.length(); i++) {
+            char c = host.charAt(i);
+            if (c != '.' && (c < '0' || c > '9')) {
+                return !host.contains(":"); // letters/digits host: usable; IPv6: not
+            }
+        }
+        return false; // digits and dots only: IPv4 address
+    }
+
+    private Handshake handshake(String host, int port, boolean useSni) {
         InetAddress address;
         try {
             address = InetAddress.getByName(host);
@@ -211,10 +252,8 @@ public final class TlsDoctor {
             socket.setSoTimeout(READ_TIMEOUT_MS);
             SSLParameters params = socket.getSSLParameters();
             params.setEndpointIdentificationAlgorithm("HTTPS");
-            try {
+            if (useSni && canUseSni(host)) {
                 params.setServerNames(Collections.singletonList(new SNIHostName(host)));
-            } catch (IllegalArgumentException ignored) {
-                // host is an IP address: no SNI possible
             }
             socket.setSSLParameters(params);
             socket.startHandshake();

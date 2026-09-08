@@ -258,6 +258,7 @@ public final class Main {
         out.println("  - all required intermediate certificates are sent by the server");
         out.println("  - certificates are sent leaf-to-root, in the correct order");
         out.println("  - no extra certificates (e.g. the root CA) are sent");
+        out.println("  - the same certificate is served when the client omits SNI");
         out.println();
         out.println("Options:");
         out.println("  --truststore <file>         use <file> as truststore instead of the JVM default");

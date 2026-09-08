@@ -15,6 +15,9 @@ pass/fail exit code that is easy to use in scripts and CI.
   default, or a custom truststore via `--truststore`
 - **extras** — no unnecessary certificates are sent: the root CA must be omitted,
   and there must be no duplicates or unneeded certificates
+- **sni** — the server serves the same certificate even when the client omits
+  SNI (servers that only present their certificate to SNI-aware clients will
+  fail here; skipped for IP targets)
 
 The plain-text summary is colored when written to a terminal
 (never when redirected, never with `NO_COLOR` set, never with `--json`).
@@ -85,6 +88,7 @@ badssl.com:443  (truststore: default JVM cacerts)
   intermediates  OK   all required intermediates sent
   trust          OK   root CA 'CN=ISRG Root X1' trusted via default JVM cacerts
   extras         OK   no extra certificates
+  sni            OK   same certificate served without SNI
 RESULT: PASS
 ```
 
@@ -98,7 +102,8 @@ incomplete-chain.badssl.com:443  (truststore: default JVM cacerts)
   intermediates  FAIL missing intermediate certificate(s) between 'CN=*.badssl.com' and a trusted root
   trust          FAIL cannot build a trusted certification path: unable to find valid certification path to requested target
   extras         OK   no extra certificates
-RESULT: FAIL (3 errors)
+  sni            FAIL TLS handshake failed without SNI: unable to find valid certification path to requested target
+RESULT: FAIL (4 errors)
 ```
 
 A server whose root CA is not trusted, checked against a private CA's
