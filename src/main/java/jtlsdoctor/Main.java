@@ -8,6 +8,14 @@ import java.security.GeneralSecurityException;
 
 public final class Main {
 
+    // ANSI escape sequences for the colored summary output
+    private static final String ANSI_START = "\u001B["; // Control Sequence Introducer
+    private static final String SET_COLOR_GREEN = "32"; // ...+ "m" starts a green span
+    private static final String SET_COLOR_RED = "31";
+    private static final String SET_COLOR_YELLOW = "33";
+    private static final String SET_COLOR_GRAY = "90";
+    private static final String ANSI_RESET = "\u001B[0m"; // back to default attributes
+
     public static void main(String[] args) {
         try {
             run(args);
@@ -184,18 +192,20 @@ public final class Main {
     }
 
     private static void print(Report report) {
+        boolean color = System.console() != null && System.getenv("NO_COLOR") == null;
         System.out.println(report.target() + "  (truststore: " + report.trustStoreDescription() + ")");
         for (CheckResult c : report.checks()) {
-            System.out.printf("  %-14s %-4s %s%n", c.name(), c.status(), c.detail() == null ? "" : c.detail());
+            System.out.printf("  %-14s %s %s%n", c.name(), mark(c.status(), color),
+                    c.detail() == null ? "" : c.detail());
         }
         StringBuilder line = new StringBuilder("RESULT: ");
         CheckResult.Status overall = report.overall();
         if (overall == CheckResult.Status.FAIL) {
-            line.append("FAIL");
+            line.append(colored("FAIL", SET_COLOR_RED, color));
         } else if (overall == CheckResult.Status.WARN) {
-            line.append("WARN");
+            line.append(colored("WARN", SET_COLOR_YELLOW, color));
         } else {
-            line.append("PASS");
+            line.append(colored("PASS", SET_COLOR_GREEN, color));
         }
         long errors = report.count(CheckResult.Status.FAIL);
         long warnings = report.count(CheckResult.Status.WARN);
@@ -213,6 +223,31 @@ public final class Main {
             line.append(")");
         }
         System.out.println(line);
+    }
+
+    /**
+     * Colored status token, kept 4 characters wide from the uncolored text so
+     * the detail column stays aligned whether or not colors are in use.
+     */
+    private static String mark(CheckResult.Status status, boolean color) {
+        String code;
+        if (status == CheckResult.Status.FAIL) {
+            code = SET_COLOR_RED;
+        } else if (status == CheckResult.Status.WARN) {
+            code = SET_COLOR_YELLOW;
+        } else if (status == CheckResult.Status.SKIP) {
+            code = SET_COLOR_GRAY;
+        } else {
+            code = SET_COLOR_GREEN;
+        }
+        return colored(String.format("%-4s", status.name()), code, color);
+    }
+
+    private static String colored(String text, String code, boolean color) {
+        if (!color) {
+            return text;
+        }
+        return ANSI_START + code + "m" + text + ANSI_RESET;
     }
 
     private static void printUsage(PrintStream out) {

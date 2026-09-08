@@ -16,6 +16,9 @@ pass/fail exit code that is easy to use in scripts and CI.
 - **extras** — no unnecessary certificates are sent: the root CA must be omitted,
   and there must be no duplicates or unneeded certificates
 
+The plain-text summary is colored when written to a terminal
+(never when redirected, never with `NO_COLOR` set, never with `--json`).
+
 ## Requirements
 
 - Java 8 or newer to run the tool
