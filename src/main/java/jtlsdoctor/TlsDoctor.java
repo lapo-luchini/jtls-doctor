@@ -59,7 +59,7 @@ public final class TlsDoctor {
                 checks.add(CheckResult.skip(n, why));
             }
             return new Report(target, trustStore.description(), checks,
-                    Collections.<String>emptyList());
+                    Collections.<ChainCert>emptyList());
         }
 
         List<X509Certificate> chain = Arrays.asList(sent);
@@ -135,12 +135,14 @@ public final class TlsDoctor {
         checks.add(extrasCheck(chain, rootIndex, r1));
         checks.add(sniCheck(host, port, leaf));
 
-        List<String> chainPem = new ArrayList<String>();
+        List<ChainCert> chainCerts = new ArrayList<ChainCert>();
         for (X509Certificate c : chain) {
-            chainPem.add(pem(c));
+            chainCerts.add(new ChainCert(shortName(c.getSubjectX500Principal()),
+                    shortName(c.getIssuerX500Principal()), c.getNotBefore().toInstant(),
+                    c.getNotAfter().toInstant(), pem(c)));
         }
 
-        return new Report(target, trustStore.description(), checks, chainPem);
+        return new Report(target, trustStore.description(), checks, chainCerts);
     }
 
     private static String pem(X509Certificate c) {
@@ -408,7 +410,11 @@ public final class TlsDoctor {
     }
 
     private static String name(X509Certificate c) {
-        String n = c.getSubjectX500Principal().getName();
+        return shortName(c.getSubjectX500Principal());
+    }
+
+    private static String shortName(javax.security.auth.x500.X500Principal p) {
+        String n = p.getName();
         if (n.startsWith("CN=")) {
             int comma = n.indexOf(',');
             return comma > 0 ? n.substring(0, comma) : n;

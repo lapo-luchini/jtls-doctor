@@ -11,13 +11,13 @@ public final class Report {
     private final String target;
     private final String trustStoreDescription;
     private final List<CheckResult> checks;
-    private final List<String> chainPem;
+    private final List<ChainCert> chain;
 
-    public Report(String target, String trustStoreDescription, List<CheckResult> checks, List<String> chainPem) {
+    public Report(String target, String trustStoreDescription, List<CheckResult> checks, List<ChainCert> chain) {
         this.target = target;
         this.trustStoreDescription = trustStoreDescription;
         this.checks = Collections.unmodifiableList(new ArrayList<CheckResult>(checks));
-        this.chainPem = Collections.unmodifiableList(new ArrayList<String>(chainPem));
+        this.chain = Collections.unmodifiableList(new ArrayList<ChainCert>(chain));
     }
 
     public String target() {
@@ -32,9 +32,18 @@ public final class Report {
         return checks;
     }
 
+    /** Raw sent chain, in the order received (empty when none was received). */
+    public List<ChainCert> chain() {
+        return chain;
+    }
+
     /** Raw sent chain as PEM, in the order received (empty when none was received). */
     public List<String> chainPem() {
-        return chainPem;
+        List<String> pems = new ArrayList<String>();
+        for (ChainCert c : chain) {
+            pems.add(c.pem());
+        }
+        return pems;
     }
 
     public CheckResult.Status overall() {
@@ -77,7 +86,7 @@ public final class Report {
         }
         m.put("checks", list);
         if (withChainPem) {
-            m.put("certificates", chainPem);
+            m.put("certificates", chainPem());
         }
         return m;
     }

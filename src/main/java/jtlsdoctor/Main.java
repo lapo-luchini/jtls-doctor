@@ -119,8 +119,8 @@ public final class Main {
     private static void writeChain(Report report, Path file) throws IOException {
         BufferedWriter out = Files.newBufferedWriter(file);
         try {
-            for (String pem : report.chainPem()) {
-                out.write(pem);
+            for (ChainCert cert : report.chain()) {
+                out.write(cert.dumpBlock());
                 out.write('\n');
             }
         } finally {
