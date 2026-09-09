@@ -70,6 +70,10 @@ public final class Report {
      */
     public Map<String, Object> json(boolean withChainPem) {
         Map<String, Object> m = new LinkedHashMap<String, Object>();
+        Map<String, Object> about = new LinkedHashMap<String, Object>();
+        about.put("url", Version.url());
+        about.put("version", Version.version());
+        m.put("about", about);
         m.put("target", target);
         m.put("truststore", trustStoreDescription);
         m.put("result", overall() == CheckResult.Status.FAIL ? "FAIL"

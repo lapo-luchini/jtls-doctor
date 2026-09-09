@@ -17,5 +17,7 @@ application {
 jar {
     manifest {
         attributes 'Main-Class': 'it.lapo.jtlsdoctor.Main'
+        attributes 'Implementation-Title': project.name
+        attributes 'Implementation-Version': project.version
     }
 }

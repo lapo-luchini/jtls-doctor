@@ -281,6 +281,7 @@ public final class Main {
     }
 
     private static void printUsage(PrintStream out) {
+        out.println("jtls-doctor " + Version.version() + " (homepage: " + Version.url() + ")");
         out.println("Usage: jtls-doctor <host>[:port] [options]");
         out.println();
         out.println("Checks that a TLS server presents a correct certificate chain:");
