@@ -270,16 +270,19 @@ function render(data) {
   });
 }
 
-$('#f').addEventListener('submit', function (ev) {
-  ev.preventDefault();
+let lastHash = ''; // target currently shown; guard against hashchange echo
+
+function runCheck(value) {
   $('#error').textContent = '';
   let req;
   try {
-    req = parseTarget($('#host').value);
+    req = parseTarget(value);
   } catch (e) {
     $('#error').textContent = e.message;
     return;
   }
+  lastHash = req.host + ':' + req.port;
+  location.hash = '#' + lastHash;      // reloadable / shareable URL
   $('#spinner').classList.add('on');
   $('#go').disabled = true;
   fetch('/check', {
@@ -297,7 +300,28 @@ $('#f').addEventListener('submit', function (ev) {
     $('#spinner').classList.remove('on');
     $('#go').disabled = false;
   });
+}
+
+$('#f').addEventListener('submit', function (ev) {
+  ev.preventDefault();
+  runCheck($('#host').value);
 });
+
+// A URL fragment (#host:port) re-runs the check, so reloading or sharing
+// the URL reproduces the result; back/forward between targets too.
+window.addEventListener('hashchange', function () {
+  const value = decodeURIComponent(location.hash.slice(1));
+  if (value && value !== lastHash) {
+    $('#host').value = value;
+    runCheck(value);
+  }
+});
+
+const initial = decodeURIComponent(location.hash.slice(1));
+if (initial) {
+  $('#host').value = initial;
+  runCheck(initial);
+}
 </script>
 </body>
 </html>
