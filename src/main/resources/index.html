@@ -69,6 +69,14 @@
   }
   ul.checks { list-style: none; margin: 0; padding: 0; }
   ul.checks li { display: flex; gap: 10px; padding: 4px 0; align-items: baseline; }
+  ul.checks .status {
+    flex: none; width: 56px; font-weight: 700; font-size: 12.5px;
+    letter-spacing: .04em; text-transform: uppercase;
+  }
+  .status.OK { color: var(--ok); }
+  .status.WARN { color: var(--warn); }
+  .status.FAIL { color: var(--fail); }
+  .status.SKIP { color: var(--skip); }
   ul.checks .name { width: 118px; flex: none; font-weight: 600; font-size: 13.5px; }
   ul.checks .detail { color: var(--muted); font-size: 13.5px; overflow-wrap: anywhere; }
   dl.grid {
@@ -202,7 +210,7 @@ function chip(status) {
 
 function addCheck(name, status, detail) {
   const li = document.createElement('li');
-  li.innerHTML = '<span class="chip ' + esc(status) + '">' + esc(status) + '</span>'
+  li.innerHTML = '<span class="status ' + esc(status) + '">' + esc(status) + '</span>'
     + '<span class="name">' + esc(name) + '</span>'
     + '<span class="detail">' + esc(detail || '') + '</span>';
   $('#checks').appendChild(li);
