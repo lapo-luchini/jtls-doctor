@@ -102,8 +102,13 @@
     background: var(--card);
   }
   dialog::backdrop { background: rgb(0 0 0 / .45); }
-  dialog h3 { margin: 0 0 4px; font-size: 16px; overflow-wrap: anywhere; }
+  dialog h3 { margin: 0 0 8px; font-size: 14px; color: var(--muted); font-weight: 600; }
   dialog .sub { color: var(--muted); font-size: 13px; margin: 4px 0; }
+  #dlg-meta {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px; line-height: 1.5; color: var(--text);
+    white-space: pre; margin-top: 10px;
+  }
   dialog pre {
     max-height: 46vh; overflow: auto; font-size: 12px; line-height: 1.35;
     background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
@@ -240,7 +245,9 @@ function addCert(cert, index, count, host) {
   div.querySelector('#btn-' + index).onclick = function () {
     $('#dlg-subject').textContent = 'Certificate ' + (index + 1) + ' of ' + count;
     $('#dlg-meta').textContent =
-      cert.subject + ' — issued by ' + cert.issuer + ' — valid ' + cert.notbefore + ' / ' + cert.notafter;
+      'Subject: ' + cert.subject + '\n'
+      + 'Issuer:  ' + cert.issuer + '\n'
+      + 'Valid:   ' + cert.notbefore + ' / ' + cert.notafter;
     $('#dlg-pem').textContent = cert.pem;
     $('#dlg-asn1').href = div.querySelector('#asn-' + index).href;
     $('#dlg').showModal();
