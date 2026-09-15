@@ -12,7 +12,8 @@ pass/fail exit code that is easy to use in scripts and CI.
 - **chain-order** — the certificates are sent leaf-to-root, in the order Java expects
 - **intermediates** — the server sends every intermediate certificate that is needed
 - **trust** — the root CA is trusted: the JVM default truststore (`cacerts`) by
-  default, or a custom truststore via `--truststore`
+  default, or a custom trust source via `--trust` (a PKCS#12/JKS truststore or
+  a PEM text file with one or more certificates)
 - **extras** — no unnecessary certificates are sent: the root CA must be omitted,
   and there must be no duplicates or unneeded certificates
 - **sni** — the server serves the same certificate even when the client omits
@@ -69,8 +70,11 @@ so URLs like `https://example.com/` work too. IPv6 targets are written as
 Usage: jtls-doctor <host>[:port] [options]
 
 Options:
-  --truststore <file>         use <file> as truststore instead of the JVM default
-  --truststore-password <pw>  truststore password (default: changeit)
+  --trust <file>              trust source instead of the JVM default (cacerts):
+                              a PKCS#12/JKS truststore, or a text file with one
+                              or more PEM certificates
+  --trust-password <pw>       truststore password (default: changeit; unused
+                              for PEM trust files)
   --http <[host:]port>        run the JSON API instead of checking one target
                               (single endpoint: POST /check)
   --json                      output the result as JSON instead of the plain-text
@@ -83,7 +87,8 @@ Options:
   -h, --help                  show this help
 ```
 
-The truststore can be JKS or PKCS12. Use a custom truststore to check servers
+The trust source can be a JKS or PKCS#12 truststore, or a plain PEM text file
+with one or more certificates. Use a custom trust source to check servers
 that chain to an internal or private CA.
 
 ## Exit codes
@@ -92,7 +97,7 @@ that chain to an internal or private CA.
 |------|------------------------------------------------------|
 | 0    | all checks passed (warnings allowed)                 |
 | 1    | at least one check failed                            |
-| 2    | usage error (bad arguments, unreadable truststore, …) |
+| 2    | usage error (bad arguments, unreadable trust file, …) |
 
 ## Examples
 
@@ -129,7 +134,7 @@ A server whose root CA is not trusted, checked against a private CA's
 truststore instead of `cacerts`:
 
 ```
-$ jtls-doctor internal.example.org:8443 --truststore /etc/pki/company-ca.p12
+$ jtls-doctor internal.example.org:8443 --trust /etc/pki/company-ca.p12
 ```
 
 With `--json`, the same data as the HTTP API is printed as JSON
@@ -154,7 +159,7 @@ plus a small single-page web interface:
 ```bash
 jtls-doctor --http :8080                      # listen on all interfaces
 jtls-doctor --http 8080                       # listen on localhost only
-jtls-doctor --http 127.0.0.1:8080 --truststore /etc/pki/company-ca.p12
+jtls-doctor --http 127.0.0.1:8080 --trust /etc/pki/company-ca.p12
 ```
 
 It runs until interrupted and exposes a single endpoint, `POST /check`

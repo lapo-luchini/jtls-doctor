@@ -40,18 +40,18 @@ public final class Main {
         boolean jsonOutput = false;
         boolean dumpChain = false;
         Path chainDumpFile = null;
-        Path truststorePath = null;
-        char[] truststorePassword = "changeit".toCharArray();
+        Path trustPath = null;
+        char[] trustPassword = null;
 
         for (int i = 0; i < args.length; i++) {
             String a = args[i];
             if (a.equals("-h") || a.equals("--help")) {
                 printUsage(System.out);
                 return;
-            } else if (a.equals("--truststore")) {
-                truststorePath = Paths.get(value(args, ++i, a));
-            } else if (a.equals("--truststore-password")) {
-                truststorePassword = value(args, ++i, a).toCharArray();
+            } else if (a.equals("--trust")) {
+                trustPath = Paths.get(value(args, ++i, a));
+            } else if (a.equals("--trust-password")) {
+                trustPassword = value(args, ++i, a).toCharArray();
             } else if (a.equals("--http")) {
                 httpBind = value(args, ++i, a);
             } else if (a.equals("--json")) {
@@ -85,9 +85,10 @@ public final class Main {
             throw new UsageException("--dump-chain needs a filename (it is printed to stdout only with --json)");
         }
 
-        TrustStore trustStore = truststorePath == null
+        TrustStore trustStore = trustPath == null
                 ? TrustStore.defaultJvm()
-                : TrustStore.load(truststorePath, truststorePassword, truststorePath.toString());
+                : TrustStore.load(trustPath, trustPassword == null ? "changeit".toCharArray() : trustPassword,
+                        trustPath.toString());
 
         if (httpBind != null) {
             String[] bind = parseBind(httpBind);
@@ -292,8 +293,11 @@ public final class Main {
         out.println("  - the same certificate is served when the client omits SNI");
         out.println();
         out.println("Options:");
-        out.println("  --truststore <file>         use <file> as truststore instead of the JVM default");
-        out.println("  --truststore-password <pw>  truststore password (default: changeit)");
+        out.println("  --trust <file>              trust source instead of the JVM default (cacerts):");
+        out.println("                              a PKCS#12/JKS truststore or a text file with");
+        out.println("                              one or more PEM certificates");
+        out.println("  --trust-password <pw>       truststore password (default: changeit; unused");
+        out.println("                              for PEM trust files)");
         out.println("  --http <[host:]port>        run the JSON API instead of checking one target");
         out.println("                              (single endpoint: POST /check)");
         out.println("  --json                      output the result as JSON (requires a target; always");

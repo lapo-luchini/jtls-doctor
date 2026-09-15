@@ -68,11 +68,17 @@ public final class TrustStore {
     public static TrustStore load(Path path, char[] password, String description)
             throws IOException, GeneralSecurityException {
         if (!Files.isRegularFile(path)) {
-            throw new IOException("truststore not found: " + path);
+            throw new IOException("trust file not found: " + path);
+        }
+        byte[] magic = readMagic(path);
+        if (magic[0] == '-') {
+            // a trust file with one or more PEM certificates; the password
+            // parameter is irrelevant here
+            return fromPem(new String(Files.readAllBytes(path), StandardCharsets.UTF_8), description);
         }
         KeyStore ks;
         try {
-            ks = KeyStore.getInstance(storeType(path));
+            ks = KeyStore.getInstance(storeType(magic));
             InputStream in = new BufferedInputStream(new FileInputStream(path.toFile()));
             try {
                 ks.load(in, password);
@@ -92,6 +98,10 @@ public final class TrustStore {
      * as the "truststorePem" field of an HTTP API request).
      */
     public static TrustStore fromPem(String pem) throws GeneralSecurityException {
+        return fromPem(pem, "truststore from request (PEM)");
+    }
+
+    private static TrustStore fromPem(String pem, String description) throws GeneralSecurityException {
         Collection<? extends Certificate> certs;
         try {
             certs = CertificateFactory.getInstance("X.509")
@@ -117,7 +127,7 @@ public final class TrustStore {
                 throw new GeneralSecurityException("cannot add certificate to truststore: " + e.getMessage(), e);
             }
         }
-        return fromKeyStore(ks, "truststore from request (PEM)");
+        return fromKeyStore(ks, description);
     }
 
     private static TrustStore fromKeyStore(KeyStore ks, String description) throws GeneralSecurityException {
@@ -145,7 +155,15 @@ public final class TrustStore {
      * Detects the truststore type from its magic bytes instead of relying on the
      * file name, so both JKS and PKCS12 stores work whatever their extension is.
      */
-    private static String storeType(Path path) throws IOException {
+    private static String storeType(byte[] magic) {
+        if (magic[0] == (byte) 0xFE && magic[1] == (byte) 0xED && magic[2] == (byte) 0xFE
+                && magic[3] == (byte) 0xED) {
+            return "JKS";
+        }
+        return "PKCS12";
+    }
+
+    private static byte[] readMagic(Path path) throws IOException {
         byte[] magic = new byte[4];
         DataInputStream in = new DataInputStream(new BufferedInputStream(new FileInputStream(path.toFile())));
         try {
@@ -153,10 +171,6 @@ public final class TrustStore {
         } finally {
             in.close();
         }
-        if (magic[0] == (byte) 0xFE && magic[1] == (byte) 0xED && magic[2] == (byte) 0xFE
-                && magic[3] == (byte) 0xED) {
-            return "JKS";
-        }
-        return "PKCS12";
+        return magic;
     }
 }
