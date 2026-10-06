@@ -29,6 +29,7 @@ public final class HttpApi {
     private final String bindHost;
     private final int port;
     private final TrustStore defaultTrustStore;
+    private final HttpProxy proxy;
     private final CountDownLatch stopped = new CountDownLatch(1);
 
     private static final class BadRequest extends RuntimeException {
@@ -51,9 +52,14 @@ public final class HttpApi {
     }
 
     public HttpApi(String bindHost, int port, TrustStore defaultTrustStore) {
+        this(bindHost, port, defaultTrustStore, null);
+    }
+
+    public HttpApi(String bindHost, int port, TrustStore defaultTrustStore, HttpProxy proxy) {
         this.bindHost = bindHost;
         this.port = port;
         this.defaultTrustStore = defaultTrustStore;
+        this.proxy = proxy;
     }
 
     /** Starts the server and blocks until the process is interrupted. */
@@ -198,7 +204,7 @@ public final class HttpApi {
         }
 
         boolean dump = "true".equalsIgnoreCase(String.valueOf(params.get("dumpChain")));
-        return new TlsDoctor(trustStore).check(host, port).json(dump);
+        return new TlsDoctor(trustStore, proxy).check(host, port).json(dump);
     }
 
     /** Query parameters, overridden by a JSON request body object if present. */

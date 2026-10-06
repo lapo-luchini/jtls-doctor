@@ -75,6 +75,9 @@ Options:
                               or more PEM certificates
   --trust-password <pw>       truststore password (default: changeit; unused
                               for PEM trust files)
+  --proxy <[http://]h:p>      reach the target through an HTTP proxy (CONNECT
+                              tunnel); without it, the JVM system properties
+                              -Dhttps.proxyHost/-Dhttp.proxyHost are honored
   --http <[host:]port>        run the JSON API instead of checking one target
                               (single endpoint: POST /check)
   --json                      output the result as JSON instead of the plain-text
@@ -145,6 +148,28 @@ $ jtls-doctor badssl.com --json
 {"target":"badssl.com:443","truststore":"default JVM cacerts","result":"PASS",
  "errors":0,"warnings":0,"checks":[{"name":"connect","status":"OK","detail":"..."},...]}
 ```
+
+## Reaching a server through an HTTP proxy
+
+When the probe target is only reachable through an HTTP proxy, the connection
+is tunneled with an HTTP `CONNECT` request (exactly what a TLS-capable client
+would do). The proxy can be selected in two ways:
+
+```bash
+# explicitly:
+$ jtls-doctor internal.example.org:443 --proxy 10.0.0.1:8080
+
+# or via the standard JVM system properties, like any regular client:
+$ java -Dhttps.proxyHost=10.0.0.1 -Dhttps.proxyPort=8080 \
+       -jar jtls-doctor.jar internal.example.org:443
+```
+
+`--proxy` (it also accepts `http://10.0.0.1:8080` and IPv6 `[...]:port` values)
+takes precedence over the system properties; `https.proxyHost` is preferred
+over `http.proxyHost`, and `https.nonProxyHosts`/`http.nonProxyHosts` patterns
+exclude a target from proxying. The same settings apply to the HTTP API mode
+(every `POST /check` runs through the proxy). Proxy authentication requires
+the proxy to accept the connection without credentials.
 
 ## HTTP API
 

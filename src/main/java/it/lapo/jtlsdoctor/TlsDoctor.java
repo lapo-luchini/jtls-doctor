@@ -1,8 +1,11 @@
 package it.lapo.jtlsdoctor;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.net.UnknownHostException;
 import java.security.GeneralSecurityException;
 import java.security.cert.CertPathBuilder;
@@ -38,9 +41,15 @@ public final class TlsDoctor {
     private static final int READ_TIMEOUT_MS = 10_000;
 
     private final TrustStore trustStore;
+    private final HttpProxy proxy;
 
     public TlsDoctor(TrustStore trustStore) {
+        this(trustStore, null);
+    }
+
+    public TlsDoctor(TrustStore trustStore, HttpProxy proxy) {
         this.trustStore = trustStore;
+        this.proxy = proxy;
     }
 
     public Report check(String host, int port) {
@@ -230,11 +239,18 @@ public final class TlsDoctor {
     }
 
     private Handshake handshake(String host, int port, boolean useSni) {
-        InetAddress address;
+        // direct (no proxy, or target explicitly excluded from it): the local
+        // resolver is used and SNI carries the host name; via proxy: the name
+        // travels in the CONNECT request and is resolved by the proxy, so an
+        // unresolvable (resolved only by the proxy) host is fine
+        boolean direct = proxy == null || !proxy.appliesTo(host);
+        InetSocketAddress destination;
         try {
-            address = InetAddress.getByName(host);
+            destination = new InetSocketAddress(InetAddress.getByName(direct ? host : proxy.host()),
+                    direct ? port : proxy.port());
         } catch (UnknownHostException e) {
-            return Handshake.fail("unknown host: " + host);
+            return Handshake.fail((direct ? "unknown host: " : "unknown proxy host: ")
+                    + (direct ? host : proxy.host()));
         }
 
         TrustManagerFactory tmf;
@@ -266,13 +282,30 @@ public final class TlsDoctor {
 
         SSLSocket socket;
         try {
-            socket = (SSLSocket) ctx.getSocketFactory().createSocket();
+            Socket plain = new Socket();
+            try {
+                plain.connect(destination, CONNECT_TIMEOUT_MS);
+                plain.setSoTimeout(READ_TIMEOUT_MS);
+                if (!direct) {
+                    tunnel(plain, proxy.description(), host, port);
+                }
+            } catch (IOException e) {
+                try {
+                    plain.close();
+                } catch (IOException ignored) {
+                    // socket cleanup is best-effort
+                }
+                throw e;
+            }
+            socket = (SSLSocket) ctx.getSocketFactory().createSocket(plain, host, port, true);
         } catch (IOException e) {
-            return Handshake.fail("cannot create socket: " + e.getMessage());
+            if (direct) {
+                return Handshake.fail(describe(e));
+            }
+            return Handshake.fail("cannot reach " + host + ":" + port + " via proxy "
+                    + proxy.description() + ": " + describe(e));
         }
         try {
-            socket.connect(new InetSocketAddress(address, port), CONNECT_TIMEOUT_MS);
-            socket.setSoTimeout(READ_TIMEOUT_MS);
             SSLParameters params = socket.getSSLParameters();
             params.setEndpointIdentificationAlgorithm("HTTPS");
             if (useSni && canUseSni(host)) {
@@ -295,6 +328,55 @@ public final class TlsDoctor {
                 // socket cleanup is best-effort
             }
         }
+    }
+
+    /**
+     * Turns a socket already connected to the proxy into a tunnel to
+     * {@code host:port} by performing an HTTP CONNECT handshake with it.
+     */
+    private static void tunnel(Socket socket, String proxyDescription, String host, int port)
+            throws IOException {
+        String authority = host + ":" + port;
+        OutputStream out = socket.getOutputStream();
+        out.write(("CONNECT " + authority + " HTTP/1.1\r\n"
+                + "Host: " + authority + "\r\n"
+                + "Proxy-Connection: close\r\n"
+                + "User-Agent: jtls-doctor/" + Version.version() + "\r\n"
+                + "\r\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        out.flush();
+        InputStream in = socket.getInputStream();
+        String status = readLine(in);
+        if (status == null || status.isEmpty()) {
+            throw new IOException("no response from proxy " + proxyDescription);
+        }
+        // "HTTP/1.0 200 Connection established"
+        String[] tokens = status.trim().split("\\s");
+        if (tokens.length < 2 || !"200".equals(tokens[1])) {
+            throw new IOException("proxy CONNECT failed: " + status);
+        }
+        while (true) {
+            String header = readLine(in);
+            if (header == null || header.isEmpty()) {
+                break; // end of headers: the tunnel carries TLS from here on
+            }
+        }
+    }
+
+    /** Reads one HTTP header line (without the trailing CR/LF); null at EOF. */
+    private static String readLine(InputStream in) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        int c;
+        while ((c = in.read()) >= 0) {
+            if (c == '\n') {
+                int len = sb.length();
+                if (len > 0 && sb.charAt(len - 1) == '\r') {
+                    sb.setLength(len - 1);
+                }
+                return sb.toString();
+            }
+            sb.append((char) c);
+        }
+        return sb.length() == 0 ? null : sb.toString();
     }
 
     private static final class Handshake {

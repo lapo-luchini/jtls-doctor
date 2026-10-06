@@ -42,6 +42,7 @@ public final class Main {
         Path chainDumpFile = null;
         Path trustPath = null;
         char[] trustPassword = null;
+        String proxySpec = null;
 
         for (int i = 0; i < args.length; i++) {
             String a = args[i];
@@ -52,6 +53,8 @@ public final class Main {
                 trustPath = Paths.get(value(args, ++i, a));
             } else if (a.equals("--trust-password")) {
                 trustPassword = value(args, ++i, a).toCharArray();
+            } else if (a.equals("--proxy")) {
+                proxySpec = value(args, ++i, a);
             } else if (a.equals("--http")) {
                 httpBind = value(args, ++i, a);
             } else if (a.equals("--json")) {
@@ -85,6 +88,8 @@ public final class Main {
             throw new UsageException("--dump-chain needs a filename (it is printed to stdout only with --json)");
         }
 
+        HttpProxy proxy = proxy(proxySpec);
+
         TrustStore trustStore = trustPath == null
                 ? TrustStore.defaultJvm()
                 : TrustStore.load(trustPath, trustPassword == null ? "changeit".toCharArray() : trustPassword,
@@ -92,7 +97,7 @@ public final class Main {
 
         if (httpBind != null) {
             String[] bind = parseBind(httpBind);
-            new HttpApi(bind[0], Integer.parseInt(bind[1]), trustStore).start();
+            new HttpApi(bind[0], Integer.parseInt(bind[1]), trustStore, proxy).start();
             return;
         }
 
@@ -104,7 +109,7 @@ public final class Main {
         String host = hp[0];
         int port = Integer.parseInt(hp[1]);
 
-        Report report = new TlsDoctor(trustStore).check(host, port);
+        Report report = new TlsDoctor(trustStore, proxy).check(host, port);
         if (dumpChain && chainDumpFile != null) {
             writeChain(report, chainDumpFile);
         }
@@ -133,6 +138,26 @@ public final class Main {
             throw new UsageException("missing value for " + option);
         }
         return args[index];
+    }
+
+    /**
+     * Explicit {@code --proxy} takes precedence over the standard system
+     * properties ({@code -Dhttps.proxyHost=... -Dhttps.proxyPort=...} or
+     * {@code -Dhttp.proxyHost=...}), which act as the fallback.
+     */
+    private static HttpProxy proxy(String spec) {
+        if (spec == null) {
+            try {
+                return HttpProxy.fromSystemProperties();
+            } catch (IllegalArgumentException e) {
+                throw new UsageException(e.getMessage());
+            }
+        }
+        try {
+            return HttpProxy.parse(spec);
+        } catch (IllegalArgumentException e) {
+            throw new UsageException("invalid --proxy: " + e.getMessage());
+        }
     }
 
     private static String[] parseBind(String s) {
@@ -298,6 +323,10 @@ public final class Main {
         out.println("                              one or more PEM certificates");
         out.println("  --trust-password <pw>       truststore password (default: changeit; unused");
         out.println("                              for PEM trust files)");
+        out.println("  --proxy <[http://]host:port>  reach the target through an HTTP proxy (CONNECT");
+        out.println("                              tunnel); without this option the JVM system");
+        out.println("                              properties -Dhttps.proxyHost/-Dhttp.proxyHost are");
+        out.println("                              honored (with https.nonProxyHosts)");
         out.println("  --http <[host:]port>        run the JSON API instead of checking one target");
         out.println("                              (single endpoint: POST /check)");
         out.println("  --json                      output the result as JSON (requires a target; always");
